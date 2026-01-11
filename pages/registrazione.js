@@ -8,29 +8,36 @@ export default function Registrazione() {
   const router = useRouter();
 
   async function handleRegister() {
-    if (!nome) return alert("Inserisci un nome!");
+    if (!nome.trim()) {
+      alert("Inserisci un nome valido!");
+      return;
+    }
 
     setLoading(true);
 
-    // Inserimento giocatore con 100 Randitz
-    const { data, error } = await supabase
-      .from("giocatori")
-      .insert([{ nome, randitz: 100 }])
-      .select()
-      .single(); // restituisce il giocatore inserito
+    try {
+      const { data, error } = await supabase
+        .from("giocatori")
+        .insert([{ nome: nome.trim(), randitz: 100 }])
+        .select()
+        .single();
 
-    setLoading(false);
+      if (error || !data) {
+        console.log(error);
+        alert("Errore nella registrazione. Riprova!");
+      } else {
+        // Salva ID e nome del giocatore
+        localStorage.setItem("giocatoreId", data.id);
+        localStorage.setItem("giocatoreNome", data.nome);
 
-    if (error) {
-      console.log(error);
-      alert("Errore nella registrazione. Riprova!");
-    } else {
-      // Salva l'ID del giocatore in locale (puoi usarlo in altre pagine)
-      localStorage.setItem("giocatoreId", data.id);
-      localStorage.setItem("giocatoreNome", data.nome);
-
-      // Vai alla pagina della squadra
-      router.push("/squadra");
+        // Vai alla pagina squadra
+        router.push("/squadra");
+      }
+    } catch (err) {
+      console.log(err);
+      alert("Errore inatteso. Riprova!");
+    } finally {
+      setLoading(false);
     }
   }
 
