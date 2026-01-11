@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
+if (!supabase) {
+  return <div className="p-4">Supabase non configurato</div>;
+}
+
 export default function Admin() {
   const [viaggiatori, setViaggiatori] = useState([]);
   const [azioni, setAzioni] = useState([]);
