@@ -1,145 +1,107 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-if (!supabase) {
-  return <div className="p-4">Supabase non configurato</div>;
-}
-
 export default function Admin() {
-  const [viaggiatori, setViaggiatori] = useState([]);
   const [azioni, setAzioni] = useState([]);
-  const [nomeViaggiatore, setNomeViaggiatore] = useState("");
-  const [costoViaggiatore, setCostoViaggiatore] = useState(10);
-  const [descrizioneAzione, setDescrizioneAzione] = useState("");
-  const [puntiAzione, setPuntiAzione] = useState(0);
-  const [viaggiatoreSelezionato, setViaggiatoreSelezionato] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [descrizione, setDescrizione] = useState("");
+  const [punteggio, setPunteggio] = useState(0);
+  const [viaggiatore, setViaggiatore] = useState("");
 
+  // Fetch azioni dal DB
   useEffect(() => {
-    fetchViaggiatori();
+    if (!supabase) return;
+
+    async function fetchAzioni() {
+      setLoading(true);
+      const { data, error } = await supabase.from("azioni").select("*");
+      if (error) console.log("Errore fetch azioni:", error);
+      else setAzioni(data);
+      setLoading(false);
+    }
+
+    fetchAzioni();
   }, []);
 
-  const fetchViaggiatori = async () => {
-    const { data } = await supabase.from("viaggiatori").select("*");
-    setViaggiatori(data);
-  };
+  // Aggiungi nuova azione
+  async function handleAdd() {
+    if (!supabase || !descrizione || !viaggiatore) return;
 
-  const addViaggiatore = async () => {
-    if (!nomeViaggiatore) return alert("Inserisci un nome!");
-    await supabase.from("viaggiatori").insert({
-      nome: nomeViaggiatore,
-      costo: costoViaggiatore,
-      punti: 0,
-    });
-    setNomeViaggiatore("");
-    setCostoViaggiatore(10);
-    fetchViaggiatori();
-  };
-
-  const fetchAzioni = async (id) => {
-    setViaggiatoreSelezionato(id);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("azioni")
-      .select("*")
-      .eq("viaggiatore_id", id);
-    setAzioni(data);
-  };
+      .insert([{ descrizione, punteggio, viaggiatore_id: viaggiatore }]);
 
-  const addAzione = async () => {
-    if (!descrizioneAzione) return alert("Inserisci descrizione!");
-    if (!viaggiatoreSelezionato) return alert("Seleziona un viaggiatore!");
-    await supabase.from("azioni").insert({
-      viaggiatore_id: viaggiatoreSelezionato,
-      descrizione: descrizioneAzione,
-      punti: puntiAzione,
-    });
-    setDescrizioneAzione("");
-    setPuntiAzione(0);
-    fetchAzioni(viaggiatoreSelezionato);
-  };
+    if (error) console.log("Errore insert:", error);
+    else setAzioni([...azioni, data[0]]);
+
+    setDescrizione("");
+    setPunteggio(0);
+    setViaggiatore("");
+  }
+
+  if (!supabase)
+    return (
+      <div className="p-4 text-center">
+        Supabase non configurato correttamente.
+      </div>
+    );
 
   return (
-    <div className="min-h-screen p-4 bg-yellow-50">
-      <h1 className="text-2xl font-bold text-center text-pink-600 mb-4">
-        Pannello Admin FantaGiappone
-      </h1>
+    <div className="p-4 max-w-md mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Admin FantaGiappone</h1>
 
-      {/* Aggiungi Viaggiatore */}
-      <div className="mb-6 bg-white p-4 rounded shadow">
-        <h2 className="font-bold mb-2">Aggiungi Viaggiatore</h2>
+      {/* Form inserimento azione */}
+      <div className="mb-6 space-y-2">
         <input
-          type="text"
-          placeholder="Nome"
-          value={nomeViaggiatore}
-          onChange={(e) => setNomeViaggiatore(e.target.value)}
-          className="border p-2 w-full mb-2 rounded"
+          className="w-full border px-3 py-2 rounded"
+          placeholder="Descrizione azione"
+          value={descrizione}
+          onChange={(e) => setDescrizione(e.target.value)}
         />
         <input
           type="number"
-          placeholder="Costo Randitz"
-          value={costoViaggiatore}
-          onChange={(e) => setCostoViaggiatore(parseInt(e.target.value))}
-          className="border p-2 w-full mb-2 rounded"
+          className="w-full border px-3 py-2 rounded"
+          placeholder="Punti + o -"
+          value={punteggio}
+          onChange={(e) => setPunteggio(Number(e.target.value))}
+        />
+        <input
+          className="w-full border px-3 py-2 rounded"
+          placeholder="ID Viaggiatore"
+          value={viaggiatore}
+          onChange={(e) => setViaggiatore(e.target.value)}
         />
         <button
-          onClick={addViaggiatore}
-          className="w-full bg-pink-500 text-white py-2 rounded hover:bg-pink-600"
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          onClick={handleAdd}
         >
-          Aggiungi Viaggiatore
+          Aggiungi Azione
         </button>
       </div>
 
-      {/* Lista viaggiatori */}
-      <div className="mb-6 bg-white p-4 rounded shadow">
-        <h2 className="font-bold mb-2">Lista Viaggiatori</h2>
-        <ul>
-          {viaggiatori.map((v) => (
-            <li
-              key={v.id}
-              className="flex justify-between border-b py-1 px-2 hover:bg-yellow-100 rounded cursor-pointer"
-              onClick={() => fetchAzioni(v.id)}
-            >
-              <span>{v.nome}</span>
-              <span>{v.costo} Randitz</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Aggiungi Azione */}
-      {viaggiatoreSelezionato && (
-        <div className="mb-6 bg-white p-4 rounded shadow">
-          <h2 className="font-bold mb-2">Aggiungi Azione per Viaggiatore</h2>
-          <input
-            type="text"
-            placeholder="Descrizione azione"
-            value={descrizioneAzione}
-            onChange={(e) => setDescrizioneAzione(e.target.value)}
-            className="border p-2 w-full mb-2 rounded"
-          />
-          <input
-            type="number"
-            placeholder="Punti (+/-)"
-            value={puntiAzione}
-            onChange={(e) => setPuntiAzione(parseInt(e.target.value))}
-            className="border p-2 w-full mb-2 rounded"
-          />
-          <button
-            onClick={addAzione}
-            className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600"
-          >
-            Aggiungi Azione
-          </button>
-
-          {/* Lista azioni */}
-          <ul className="mt-2">
+      {/* Lista azioni */}
+      <div>
+        <h2 className="text-xl font-semibold mb-2">Azioni registrate</h2>
+        {loading ? (
+          <p>Caricamento...</p>
+        ) : azioni.length === 0 ? (
+          <p>Nessuna azione</p>
+        ) : (
+          <ul className="space-y-2">
             {azioni.map((a) => (
-              <li key={a.id} className="border-b py-1 px-2">
-                {a.descrizione} → {a.punti} pt
+              <li
+                key={a.id}
+                className="border px-3 py-2 rounded flex justify-between items-center"
+              >
+                <span>
+                  {a.descrizione} ({a.punteggio} punti) - Viaggiatore{" "}
+                  {a.viaggiatore_id}
+                </span>
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
